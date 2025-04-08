@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clash配置编辑器</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        .upload-section {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .upload-section:hover {
+            border-color: #3498db;
+        }
+        .upload-section.dragover {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-color: #3498db;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .btn:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .editor-section {
+            display: none;
+            margin-top: 30px;
+        }
+        .relay-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+        }
+        .relay-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            color: #2c3e50;
+        }
+        .relay-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        .relay-box {
+            flex: 1;
+            min-height: 100px;
+            padding: 10px;
+            border: 1px dashed #ddd;
+            border-radius: 4px;
+            background-color: #fff;
+        }
+        .relay-box-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        .relay-actions {
+            text-align: center;
+            margin-top: 15px;
+        }
+        .editor-container {
+            display: flex;
+            gap: 20px;
+        }
+        .proxies-container, .groups-container {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 400px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .section-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            color: #2c3e50;
+        }
+        .proxy-item, .group-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            cursor: move;
+            transition: all 0.2s ease;
+        }
+        .proxy-item:hover {
+            background-color: #edf2f7;
+        }
+        .group-header {
+            padding: 10px;
+            margin-bottom: 8px;
+            background-color: #e3f2fd;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .group-content {
+            padding-left: 15px;
+            margin-bottom: 15px;
+        }
+        .group-proxies {
+            min-height: 50px;
+            padding: 10px;
+            border: 1px dashed #ddd;
+            border-radius: 4px;
+            margin-top: 8px;
+        }
+        .export-section {
+            margin-top: 30px;
+            text-align: center;
+        }
+        .dragging {
+            opacity: 0.5;
+        }
+        .drag-over {
+            background-color: rgba(52, 152, 219, 0.1);
+            border: 1px dashed #3498db;
+        }
+        .status-message {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .proxy-type-badge {
+            display: inline-block;
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-left: 5px;
+            background-color: #e0e0e0;
+            color: #555;
+        }
+        .search-box {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .proxy-item-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .proxy-name {
+            flex-grow: 1;
+        }
+        /* 垃圾桶样式 */
+        .trash-container {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background-color: #e74c3c;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            transition: all 0.3s ease;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .trash-container.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .trash-container.drag-over {
+            transform: scale(1.2);
+            background-color: #c0392b;
+        }
+        .trash-icon {
+            width: 30px;
+            height: 30px;
+            fill: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Clash配置编辑器</h1>
+        
+        <div class="upload-section" id="uploadSection">
+            <p>拖放YAML文件到此处或点击选择文件</p>
+            <input type="file" id="fileInput" accept=".yaml,.yml" style="display: none;">
+            <button class="btn" id="selectFileBtn">选择文件</button>
+        </div>
+        
+        <div class="editor-section" id="editorSection">
+            <!-- 新增的链式转发节点生成区域 -->
+            <div class="relay-section" id="relaySection">
+                <h2 class="relay-title">生成链式转发节点</h2>
+                <div class="relay-container">
+                    <div class="relay-box" id="frontProxyBox">
+                        <div class="relay-box-title">前置代理</div>
+                        <div class="relay-box-content" id="frontProxyContent"></div>
+                    </div>
+                    <div class="relay-box" id="backProxyBox">
+                        <div class="relay-box-title">落地节点</div>
+                        <div class="relay-box-content" id="backProxyContent"></div>
+                    </div>
+                </div>
+                <div class="relay-actions">
+                    <button class="btn" id="generateRelayBtn" disabled>生成链式转发节点</button>
+                </div>
+            </div>
+            
+            <div class="editor-container">
+                <div class="proxies-container">
+                    <h2 class="section-title">代理列表</h2>
+                    <input type="text" id="proxySearch" class="search-box" placeholder="搜索代理...">
+                    <div id="proxiesList"></div>
+                </div>
+                
+                <div class="groups-container">
+                    <h2 class="section-title">代理组</h2>
+                    <input type="text" id="groupSearch" class="search-box" placeholder="搜索代理组...">
+                    <div id="groupsList"></div>
+                </div>
+            </div>
+            
+            <div class="export-section">
+                <button class="btn" id="exportBtn" disabled>导出配置</button>
+            </div>
+        </div>
+        
+        <div id="statusMessage" class="status-message" style="display: none;"></div>
+    </div>
+    
+    <!-- 垃圾桶图标 -->
+    <div id="trashContainer" class="trash-container">
+        <svg class="trash-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M3 6h18v2H3V6zm2 3v13h14V9H5zm4-7h6v2H9V2z"/>
+        </svg>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 元素引用
+            const fileInput = document.getElementById('fileInput');
+            const selectFileBtn = document.getElementById('selectFileBtn');
+            const uploadSection = document.getElementById('uploadSection');
+            const editorSection = document.getElementById('editorSection');
+            const proxiesList = document.getElementById('proxiesList');
+            const groupsList = document.getElementById('groupsList');
+            const exportBtn = document.getElementById('exportBtn');
+            const statusMessage = document.getElementById('statusMessage');
+            const proxySearch = document.getElementById('proxySearch');
+            const groupSearch = document.getElementById('groupSearch');
+            
+            // 链式转发相关元素
+            const frontProxyBox = document.getElementById('frontProxyBox');
+            const backProxyBox = document.getElementById('backProxyBox');
+            const frontProxyContent = document.getElementById('frontProxyContent');
+            const backProxyContent = document.getElementById('backProxyContent');
+            const generateRelayBtn = document.getElementById('generateRelayBtn');
+            
+            // 垃圾桶相关元素
+            const trashContainer = document.getElementById('trashContainer');
+            
+            // 存储原始YAML数据和文本
+            let originalYamlText = null;
+            let parsedYaml = null;
+            let allProxies = [];
+            
+            // 存储链式转发节点的前置代理和落地节点
+            let frontProxy = null;
+            let backProxy = null;
+            
+            // 事件监听器
+            selectFileBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // 为代理列表添加拖拽事件
+            proxiesList.addEventListener('dragover', handleDragOver);
+            proxiesList.addEventListener('dragleave', handleDragLeave);
+            proxiesList.addEventListener('drop', handleDrop);
+            
+            // 为代理组列表添加拖拽事件
+            groupsList.addEventListener('dragover', handleDragOver);
+            groupsList.addEventListener('dragleave', handleDragLeave);
+            groupsList.addEventListener('drop', handleGroupDrop);
+            
+            // 为链式转发区域添加拖拽事件
+            frontProxyBox.addEventListener('dragover', handleDragOver);
+            frontProxyBox.addEventListener('dragleave', handleDragLeave);
+            frontProxyBox.addEventListener('drop', handleRelayDrop);
+            
+            backProxyBox.addEventListener('dragover', handleDragOver);
+            backProxyBox.addEventListener('dragleave', handleDragLeave);
+            backProxyBox.addEventListener('drop', handleRelayDrop);
+            
+            // 为垃圾桶添加拖拽事件
+            trashContainer.addEventListener('dragover', handleDragOver);
+            trashContainer.addEventListener('dragleave', handleDragLeave);
+            trashContainer.addEventListener('drop', handleTrashDrop);
+            
+            // 生成链式转发节点按钮事件
+            generateRelayBtn.addEventListener('click', generateRelayNode);
+            
+            // 搜索功能
+            proxySearch.addEventListener('input', function() {
+                filterProxies(this.value);
+            });
+            
+            groupSearch.addEventListener('input', function() {
+                filterGroups(this.value);
+            });
+            
+            // 拖放事件
+            uploadSection.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadSection.classList.add('dragover');
+            });
+            
+            uploadSection.addEventListener('dragleave', () => {
+                uploadSection.classList.remove('dragover');
+            });
+            
+            uploadSection.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadSection.classList.remove('dragover');
+                
+                if (e.dataTransfer.files.length) {
+                    handleFile(e.dataTransfer.files[0]);
+                }
+            });
+            
+            exportBtn.addEventListener('click', exportYaml);
+            
+            // 处理文件选择
+            function handleFileSelect(e) {
+                if (e.target.files.length) {
+                    handleFile(e.target.files[0]);
+                }
+            }
+            
+            // 处理文件
+            function handleFile(file) {
+                if (!file.name.endsWith('.yaml') && !file.name.endsWith('.yml')) {
+                    showStatus('请选择YAML文件', 'error');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const yamlContent = e.target.result;
+                        originalYamlText = yamlContent;
+                        parsedYaml = jsyaml.load(yamlContent);
+                        
+                        // 检查是否是有效的Clash配置
+                        if (!parsedYaml.proxies || !parsedYaml['proxy-groups']) {
+                            showStatus('无效的Clash配置文件', 'error');
+                            return;
+                        }
+                        
+                        // 存储所有代理
+                        allProxies = parsedYaml.proxies.map(proxy => {
+                            return typeof proxy === 'object' ? proxy.name : proxy;
+                        });
+                        
+                        // 显示编辑界面
+                        uploadSection.style.display = 'none';
+                        editorSection.style.display = 'block';
+                        
+                        // 分离relay节点和普通代理组
+                        const regularGroups = [];
+                        const relayNodes = [];
+                        
+                        parsedYaml['proxy-groups'].forEach(group => {
+                            if (group.type === 'relay') {
+                                relayNodes.push(group);
+                            } else {
+                                regularGroups.push(group);
+                            }
+                        });
+                        
+                        // 渲染代理和代理组
+                        renderProxies(parsedYaml.proxies, relayNodes);
+                        renderGroups(regularGroups);
+                        
+                        // 启用导出按钮
+                        exportBtn.disabled = false;
+                        
+                        showStatus('文件加载成功', 'success');
+                    } catch (error) {
+                        console.error('解析YAML出错:', error);
+                        showStatus('解析YAML出错: ' + error.message, 'error');
+                    }
+                };
+                reader.readAsText(file);
+            }
+            
+            // 渲染代理列表
+            function renderProxies(proxies, relayNodes = []) {
+                proxiesList.innerHTML = '';
+                // 为代理列表容器添加标识，用于拖拽排序
+                proxiesList.setAttribute('data-group-name', 'proxies-list');
+                
+                // 渲染普通代理
+                proxies.forEach((proxy, index) => {
+                    const proxyName = typeof proxy === 'object' ? proxy.name : proxy;
+                    const proxyType = typeof proxy === 'object' ? proxy.type : 'unknown';
+                    
+                    const proxyItem = document.createElement('div');
+                    proxyItem.className = 'proxy-item';
+                    proxyItem.setAttribute('data-proxy-name', proxyName);
+                    proxyItem.setAttribute('data-proxy-index', index);
+                    proxyItem.draggable = true;
+                    
+                    const proxyItemContainer = document.createElement('div');
+                    proxyItemContainer.className = 'proxy-item-container';
+                    
+                    const proxyNameSpan = document.createElement('span');
+                    proxyNameSpan.className = 'proxy-name';
+                    proxyNameSpan.textContent = proxyName;
+                    
+                    const proxyTypeBadge = document.createElement('span');
+                    proxyTypeBadge.className = 'proxy-type-badge';
+                    proxyTypeBadge.textContent = proxyType;
+                    
+                    proxyItemContainer.appendChild(proxyNameSpan);
+                    proxyItemContainer.appendChild(proxyTypeBadge);
+                    proxyItem.appendChild(proxyItemContainer);
+                    
+                    // 拖拽事件
+                    proxyItem.addEventListener('dragstart', handleDragStart);
+                    proxyItem.addEventListener('dragend', handleDragEnd);
+                    
+                    proxiesList.appendChild(proxyItem);
+                });
+                
+                // 渲染relay节点
+                relayNodes.forEach((relay, index) => {
+                    const proxyName = relay.name;
+                    
+                    const proxyItem = document.createElement('div');
+                    proxyItem.className = 'proxy-item';
+                    proxyItem.setAttribute('data-proxy-name', proxyName);
+                    proxyItem.setAttribute('data-relay-index', index);
+                    proxyItem.draggable = true;
+                    
+                    const proxyItemContainer = document.createElement('div');
+                    proxyItemContainer.className = 'proxy-item-container';
+                    
+                    const proxyNameSpan = document.createElement('span');
+                    proxyNameSpan.className = 'proxy-name';
+                    proxyNameSpan.textContent = proxyName;
+                    
+                    const proxyTypeBadge = document.createElement('span');
+                    proxyTypeBadge.className = 'proxy-type-badge';
+                    proxyTypeBadge.textContent = 'relay';
+                    
+                    proxyItemContainer.appendChild(proxyNameSpan);
+                    proxyItemContainer.appendChild(proxyTypeBadge);
+                    proxyItem.appendChild(proxyItemContainer);
+                    
+                    // 拖拽事件
+                    proxyItem.addEventListener('dragstart', handleDragStart);
+                    proxyItem.addEventListener('dragend', handleDragEnd);
+                    
+                    proxiesList.appendChild(proxyItem);
+                });
+            }
+            
+            // 渲染代理组
+            function renderGroups(groups) {
+                groupsList.innerHTML = '';
+                
+                // 为代理组列表容器添加标识，用于拖拽排序
+                groupsList.setAttribute('data-container-type', 'groups-list');
+                
+                // 添加新增代理组的输入框和按钮
+                const addGroupContainer = document.createElement('div');
+                addGroupContainer.className = 'add-group-container';
+                addGroupContainer.style.marginBottom = '15px';
+                addGroupContainer.style.display = 'flex';
+                addGroupContainer.style.gap = '10px';
+                
+                const addGroupInput = document.createElement('input');
+                addGroupInput.type = 'text';
+                addGroupInput.placeholder = '输入新代理组名称';
+                addGroupInput.className = 'search-box';
+                addGroupInput.style.margin = '0';
+                
+                const addGroupBtn = document.createElement('button');
+                addGroupBtn.className = 'btn';
+                addGroupBtn.textContent = '添加';
+                addGroupBtn.style.padding = '8px 15px';
+                
+                addGroupBtn.addEventListener('click', () => {
+                    const groupName = addGroupInput.value.trim();
+                    if (groupName) {
+                        // 检查是否已存在同名组
+                        const existingGroup = parsedYaml['proxy-groups'].find(g => g.name === groupName);
+                        if (existingGroup) {
+                            showStatus(`代理组 ${groupName} 已存在`, 'error');
+                            return;
+                        }
+                        
+                        // 创建新代理组
+                        const newGroup = {
+                            name: groupName,
+                            type: 'select',
+                            proxies: []
+                        };
+                        
+                        // 添加到YAML数据
+                        parsedYaml['proxy-groups'].push(newGroup);
+                        
+                        // 重新渲染代理组
+                        const regularGroups = parsedYaml['proxy-groups'].filter(g => g.type !== 'relay');
+                        renderGroups(regularGroups);
+                        
+                        showStatus(`已添加代理组: ${groupName}`, 'success');
+                    }
+                });
+                
+                addGroupContainer.appendChild(addGroupInput);
+                addGroupContainer.appendChild(addGroupBtn);
+                groupsList.appendChild(addGroupContainer);
+                
+                groups.forEach((group, index) => {
+                    const groupContainer = document.createElement('div');
+                    groupContainer.className = 'group-item';
+                    groupContainer.setAttribute('data-group-index', index);
+                    groupContainer.setAttribute('data-group-name', group.name);
+                    groupContainer.draggable = true; // 使代理组可拖拽
+                    
+                    // 添加拖拽事件
+                    groupContainer.addEventListener('dragstart', handleGroupContainerDragStart);
+                    groupContainer.addEventListener('dragend', handleDragEnd);
+                    
+                    const groupHeader = document.createElement('div');
+                    groupHeader.className = 'group-header';
+                    groupHeader.setAttribute('data-proxy-name', group.name);
+                    groupHeader.setAttribute('data-group-type', group.type);
+                    groupHeader.addEventListener('dragstart', handleGroupDragStart);
+                    groupHeader.addEventListener('dragend', handleDragEnd);
+                    
+                    // 创建组名和删除按钮的容器
+                    const headerContainer = document.createElement('div');
+                    headerContainer.style.display = 'flex';
+                    headerContainer.style.justifyContent = 'space-between';
+                    headerContainer.style.alignItems = 'center';
+                    
+                    const groupTitle = document.createElement('span');
+                    groupTitle.textContent = group.name + ' (' + group.type + ')';
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = '删除';
+                    deleteBtn.className = 'btn';
+                    deleteBtn.style.padding = '3px 8px';
+                    deleteBtn.style.fontSize = '12px';
+                    deleteBtn.style.backgroundColor = '#e74c3c';
+                    
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation(); // 阻止事件冒泡，避免触发折叠/展开
+                        
+                        // 从YAML数据中删除该组
+                        const groupIndex = parsedYaml['proxy-groups'].findIndex(g => g.name === group.name);
+                        if (groupIndex !== -1) {
+                            parsedYaml['proxy-groups'].splice(groupIndex, 1);
+                            
+                            // 重新渲染代理组
+                            const regularGroups = parsedYaml['proxy-groups'].filter(g => g.type !== 'relay');
+                            renderGroups(regularGroups);
+                            
+                            showStatus(`已删除代理组: ${group.name}`, 'success');
+                        }
+                    });
+                    
+                    headerContainer.appendChild(groupTitle);
+                    headerContainer.appendChild(deleteBtn);
+                    groupHeader.appendChild(headerContainer);
+                    
+                    // 添加点击事件用于折叠/展开
+                    groupHeader.addEventListener('click', () => {
+                        groupContent.style.display = groupContent.style.display === 'none' ? 'block' : 'none';
+                    });
+                    
+                    const groupContent = document.createElement('div');
+                    groupContent.className = 'group-content';
+                    // 默认折叠状态
+                    groupContent.style.display = 'none';
+                    
+                    // 代理列表区域
+                    const groupProxies = document.createElement('div');
+                    groupProxies.className = 'group-proxies';
+                    groupProxies.setAttribute('data-group-name', group.name);
+                    
+                    // 拖放事件
+                    groupProxies.addEventListener('dragover', handleDragOver);
+                    groupProxies.addEventListener('dragleave', handleDragLeave);
+                    groupProxies.addEventListener('drop', handleDrop);
+                    
+                    // 添加现有代理
+                    if (group.proxies && Array.isArray(group.proxies)) {
+                        group.proxies.forEach(proxyName => {
+                            const proxyItem = document.createElement('div');
+                            proxyItem.className = 'proxy-item';
+                            proxyItem.setAttribute('data-proxy-name', proxyName);
+                            proxyItem.draggable = true;
+                            
+                            // 查找代理类型
+                            let proxyType = 'unknown';
+                            for (const p of parsedYaml.proxies) {
+                                if ((typeof p === 'object' && p.name === proxyName) || p === proxyName) {
+                                    proxyType = typeof p === 'object' ? p.type : 'unknown';
+                                    break;
+                                }
+                            }
+                            
+                            const proxyItemContainer = document.createElement('div');
+                            proxyItemContainer.className = 'proxy-item-container';
+                            
+                            const proxyNameSpan = document.createElement('span');
+                            proxyNameSpan.className = 'proxy-name';
+                            proxyNameSpan.textContent = proxyName;
+                            
+                            const proxyTypeBadge = document.createElement('span');
+                            proxyTypeBadge.className = 'proxy-type-badge';
+                            proxyTypeBadge.textContent = proxyType;
+                            
+                            proxyItemContainer.appendChild(proxyNameSpan);
+                            proxyItemContainer.appendChild(proxyTypeBadge);
+                            proxyItem.appendChild(proxyItemContainer);
+                            
+                            // 拖拽事件
+                            proxyItem.addEventListener('dragstart', handleDragStart);
+                            proxyItem.addEventListener('dragend', handleDragEnd);
+                            
+                            groupProxies.appendChild(proxyItem);
+                        });
+                    }
+                    
+                    groupContent.appendChild(groupProxies);
+                    groupContainer.appendChild(groupHeader);
+                    groupContainer.appendChild(groupContent);
+                    groupsList.appendChild(groupContainer);
+                });
+            }
+            
+            // 过滤代理
+            function filterProxies(searchTerm) {
+                const items = proxiesList.querySelectorAll('.proxy-item');
+                searchTerm = searchTerm.toLowerCase();
+                
+                items.forEach(item => {
+                    const proxyName = item.getAttribute('data-proxy-name').toLowerCase();
+                    if (proxyName.includes(searchTerm)) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            }
+            
+            // 过滤代理组
+            function filterGroups(searchTerm) {
+                const items = groupsList.querySelectorAll('.group-item');
+                searchTerm = searchTerm.toLowerCase();
+                
+                items.forEach(item => {
+                    const groupName = item.getAttribute('data-group-name').toLowerCase();
+                    if (groupName.includes(searchTerm)) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            }
+            
+            // 拖拽处理函数
+            function handleDragStart(e) {
+                e.dataTransfer.setData('text/plain', e.target.getAttribute('data-proxy-name'));
+                // 存储源元素，用于同一容器内的排序
+                e.dataTransfer.setData('source-element', e.target.outerHTML);
+                e.dataTransfer.setData('source-parent', e.target.parentNode.getAttribute('data-group-name') || 'proxies-list');
+                e.dataTransfer.setData('element-type', 'proxy');
+                e.target.classList.add('dragging');
+                
+                // 显示垃圾桶
+                trashContainer.classList.add('active');
+            }
+            
+            // 处理代理组拖拽开始
+            function handleGroupDragStart(e) {
+                e.dataTransfer.setData('text/plain', e.target.getAttribute('data-proxy-name'));
+                e.dataTransfer.setData('group-type', e.target.getAttribute('data-group-type'));
+                e.dataTransfer.setData('element-type', 'group');
+                e.target.classList.add('dragging');
+                
+                // 显示垃圾桶
+                trashContainer.classList.add('active');
+            }
+            
+            // 处理代理组之间的拖拽排序
+            function handleGroupDrop(e) {
+                e.preventDefault();
+                e.currentTarget.classList.remove('drag-over');
+                
+                const elementType = e.dataTransfer.getData('element-type');
+                
+                // 只处理代理组容器的拖拽
+                if (elementType === 'group-container') {
+                    const groupName = e.dataTransfer.getData('text/plain');
+                    const groupIndex = parseInt(e.dataTransfer.getData('group-index'));
+                    
+                    // 查找当前被拖动的元素
+                    let draggedElement = null;
+                    for (const child of e.currentTarget.children) {
+                        if (child.getAttribute('data-group-name') === groupName && 
+                            !child.classList.contains('add-group-container')) {
+                            draggedElement = child;
+                            break;
+                        }
+                    }
+                    
+                    if (draggedElement) {
+                        // 获取拖放位置的相关信息
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const y = e.clientY - rect.top;
+                        
+                        // 确定放置位置
+                        let nextElement = null;
+                        const children = Array.from(e.currentTarget.children).filter(child => 
+                            !child.classList.contains('add-group-container')
+                        );
+                        
+                        // 找到鼠标位置下方的第一个元素
+                        for (let i = 0; i < children.length; i++) {
+                            const child = children[i];
+                            if (child !== draggedElement) {
+                                const childRect = child.getBoundingClientRect();
+                                const childY = childRect.top - rect.top + childRect.height / 2;
+                                
+                                if (y <= childY) {
+                                    nextElement = child;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // 移动元素到新位置
+                        e.currentTarget.removeChild(draggedElement);
+                        
+                        // 找到添加组按钮容器
+                        const addGroupContainer = e.currentTarget.querySelector('.add-group-container');
+                        
+                        if (nextElement) {
+                            e.currentTarget.insertBefore(draggedElement, nextElement);
+                        } else {
+                            e.currentTarget.appendChild(draggedElement);
+                        }
+                        
+                        // 确保添加组按钮始终在最前面
+                        if (addGroupContainer) {
+                            e.currentTarget.removeChild(addGroupContainer);
+                            e.currentTarget.insertBefore(addGroupContainer, e.currentTarget.firstChild);
+                        }
+                        
+                        // 更新YAML数据中代理组的顺序
+                        updateGroupsOrder();
+                    }
+                }
+            }
+            
+            // 处理代理组容器拖拽开始
+            function handleGroupContainerDragStart(e) {
+                e.dataTransfer.setData('text/plain', e.target.getAttribute('data-group-name'));
+                e.dataTransfer.setData('element-type', 'group-container');
+                e.dataTransfer.setData('group-index', e.target.getAttribute('data-group-index'));
+                e.target.classList.add('dragging');
+            }
+            
+            function handleDragEnd(e) {
+                e.target.classList.remove('dragging');
+                
+                // 隐藏垃圾桶
+                trashContainer.classList.remove('active');
+                trashContainer.classList.remove('drag-over');
+            }
+            
+            function handleDragOver(e) {
+                e.preventDefault();
+                e.currentTarget.classList.add('drag-over');
+            }
+            
+            function handleDragLeave(e) {
+                e.currentTarget.classList.remove('drag-over');
+            }
+            
+            function handleDrop(e) {
+                e.preventDefault();
+                e.currentTarget.classList.remove('drag-over');
+                
+                const proxyName = e.dataTransfer.getData('text/plain');
+                const sourceParent = e.dataTransfer.getData('source-parent');
+                const elementType = e.dataTransfer.getData('element-type') || 'proxy';
+                const groupName = e.currentTarget.getAttribute('data-group-name') || 'proxies-list';
+                
+                // 如果是代理组被拖拽到另一个代理组
+                if (elementType === 'group' && groupName !== 'proxies-list') {
+                    // 检查代理组是否已在目标组中
+                    let alreadyInGroup = false;
+                    const groupIndex = parsedYaml['proxy-groups'].findIndex(group => group.name === groupName);
+                    
+                    if (groupIndex !== -1) {
+                        const targetGroup = parsedYaml['proxy-groups'][groupIndex];
+                        if (targetGroup.proxies && targetGroup.proxies.includes(proxyName)) {
+                            alreadyInGroup = true;
+                        }
+                        
+                        // 如果代理组不在目标组中，则添加
+                        if (!alreadyInGroup) {
+                            // 添加代理组到目标组的proxies列表
+                            if (!targetGroup.proxies) {
+                                targetGroup.proxies = [];
+                            }
+                            targetGroup.proxies.push(proxyName);
+                            
+                            // 创建新的代理项显示在UI中
+                            const proxyItem = document.createElement('div');
+                            proxyItem.className = 'proxy-item';
+                            proxyItem.setAttribute('data-proxy-name', proxyName);
+                            proxyItem.draggable = true;
+                            
+                            const proxyItemContainer = document.createElement('div');
+                            proxyItemContainer.className = 'proxy-item-container';
+                            
+                            const proxyNameSpan = document.createElement('span');
+                            proxyNameSpan.className = 'proxy-name';
+                            proxyNameSpan.textContent = proxyName;
+                            
+                            const groupType = e.dataTransfer.getData('group-type');
+                            const proxyTypeBadge = document.createElement('span');
+                            proxyTypeBadge.className = 'proxy-type-badge';
+                            proxyTypeBadge.textContent = groupType;
+                            
+                            proxyItemContainer.appendChild(proxyNameSpan);
+                            proxyItemContainer.appendChild(proxyTypeBadge);
+                            proxyItem.appendChild(proxyItemContainer);
+                            
+                            // 拖拽事件
+                            proxyItem.addEventListener('dragstart', handleDragStart);
+                            proxyItem.addEventListener('dragend', handleDragEnd);
+                            
+                            e.currentTarget.appendChild(proxyItem);
+                            
+                            showStatus(`已添加代理组 ${proxyName} 到 ${groupName}`, 'success');
+                        }
+                    }
+                    return;
+                }
+                
+                // 获取拖放位置的相关信息
+                const rect = e.currentTarget.getBoundingClientRect();
+                const y = e.clientY - rect.top;
+                
+                // 检查是否是同一容器内的排序
+                const isSameContainer = sourceParent === groupName;
+                
+                // 查找当前被拖动的元素
+                let draggedElement = null;
+                if (isSameContainer) {
+                    // 在同一容器内查找被拖动的元素
+                    for (const child of e.currentTarget.children) {
+                        if (child.getAttribute('data-proxy-name') === proxyName) {
+                            draggedElement = child;
+                            break;
+                        }
+                    }
+                }
+                
+                // 如果是同一容器内的排序且找到了被拖动的元素
+                if (isSameContainer && draggedElement) {
+                    // 确定放置位置
+                    let nextElement = null;
+                    const children = Array.from(e.currentTarget.children);
+                    
+                    // 找到鼠标位置下方的第一个元素
+                    for (let i = 0; i < children.length; i++) {
+                        const child = children[i];
+                        if (child !== draggedElement) {
+                            const childRect = child.getBoundingClientRect();
+                            const childY = childRect.top - rect.top + childRect.height / 2;
+                            
+                            if (y <= childY) {
+                                nextElement = child;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // 移动元素到新位置
+                    e.currentTarget.removeChild(draggedElement);
+                    if (nextElement) {
+                        e.currentTarget.insertBefore(draggedElement, nextElement);
+                    } else {
+                        e.currentTarget.appendChild(draggedElement);
+                    }
+                    
+                    // 更新YAML数据
+                    if (groupName !== 'proxies-list') {
+                        updateGroupProxies(groupName, Array.from(e.currentTarget.children).map(child => 
+                            child.getAttribute('data-proxy-name')
+                        ));
+                    }
+                } else {
+                    // 检查代理是否已在组中
+                    let alreadyInGroup = false;
+                    for (const child of e.currentTarget.children) {
+                        if (child.getAttribute('data-proxy-name') === proxyName) {
+                            alreadyInGroup = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!alreadyInGroup) {
+                        // 查找代理类型
+                        let proxyType = 'unknown';
+                        for (const p of parsedYaml.proxies) {
+                            if ((typeof p === 'object' && p.name === proxyName) || p === proxyName) {
+                                proxyType = typeof p === 'object' ? p.type : 'unknown';
+                                break;
+                            }
+                        }
+                        
+                        // 创建新的代理项
+                        const proxyItem = document.createElement('div');
+                        proxyItem.className = 'proxy-item';
+                        proxyItem.setAttribute('data-proxy-name', proxyName);
+                        proxyItem.draggable = true;
+                        
+                        const proxyItemContainer = document.createElement('div');
+                        proxyItemContainer.className = 'proxy-item-container';
+                        
+                        const proxyNameSpan = document.createElement('span');
+                        proxyNameSpan.className = 'proxy-name';
+                        proxyNameSpan.textContent = proxyName;
+                        
+                        const proxyTypeBadge = document.createElement('span');
+                        proxyTypeBadge.className = 'proxy-type-badge';
+                        proxyTypeBadge.textContent = proxyType;
+                        
+                        proxyItemContainer.appendChild(proxyNameSpan);
+                        proxyItemContainer.appendChild(proxyTypeBadge);
+                        proxyItem.appendChild(proxyItemContainer);
+                        
+                        // 拖拽事件
+                        proxyItem.addEventListener('dragstart', handleDragStart);
+                        proxyItem.addEventListener('dragend', handleDragEnd);
+                        
+                        // 确定放置位置
+                        let nextElement = null;
+                        const children = Array.from(e.currentTarget.children);
+                        
+                        // 找到鼠标位置下方的第一个元素
+                        for (let i = 0; i < children.length; i++) {
+                            const child = children[i];
+                            const childRect = child.getBoundingClientRect();
+                            const childY = childRect.top - rect.top + childRect.height / 2;
+                            
+                            if (y <= childY) {
+                                nextElement = child;
+                                break;
+                            }
+                        }
+                        
+                        // 插入到指定位置
+                        if (nextElement) {
+                            e.currentTarget.insertBefore(proxyItem, nextElement);
+                        } else {
+                            e.currentTarget.appendChild(proxyItem);
+                        }
+                        
+                        // 更新YAML数据
+                        if (groupName !== 'proxies-list') {
+                            updateGroupProxies(groupName, Array.from(e.currentTarget.children).map(child => 
+                                child.getAttribute('data-proxy-name')
+                            ));
+                        }
+                    }
+                }
+            }
+            
+            // 更新组中的代理
+            function updateGroupProxies(groupName, proxies) {
+                const groupIndex = parsedYaml['proxy-groups'].findIndex(group => group.name === groupName);
+                if (groupIndex !== -1) {
+                    // 检查代理组是否为空
+                    if (proxies.length === 0) {
+                        // 如果代理组为空，则从配置中删除该组
+                        parsedYaml['proxy-groups'].splice(groupIndex, 1);
+                        
+                        // 重新渲染代理组
+                        const regularGroups = parsedYaml['proxy-groups'].filter(g => g.type !== 'relay');
+                        renderGroups(regularGroups);
+                        
+                        showStatus(`已自动删除空代理组: ${groupName}`, 'success');
+                    } else {
+                        // 如果代理组不为空，则更新代理列表
+                        parsedYaml['proxy-groups'][groupIndex].proxies = proxies;
+                    }
+                }
+            }
+            
+            // 更新代理组顺序
+            function updateGroupsOrder() {
+                // 获取当前UI中的代理组顺序
+                const groupItems = Array.from(groupsList.querySelectorAll('.group-item'));
+                const newGroupsOrder = [];
+                
+                // 收集代理组的新顺序
+                groupItems.forEach(groupItem => {
+                    const groupName = groupItem.getAttribute('data-group-name');
+                    const group = parsedYaml['proxy-groups'].find(g => g.name === groupName);
+                    if (group) {
+                        newGroupsOrder.push(group);
+                    }
+                });
+                
+                // 保留所有relay类型的代理组
+                const relayGroups = parsedYaml['proxy-groups'].filter(group => group.type === 'relay');
+                
+                // 更新parsedYaml中的代理组顺序，确保relay节点在最后
+                parsedYaml['proxy-groups'] = [...newGroupsOrder, ...relayGroups.filter(relay => 
+                    !newGroupsOrder.some(g => g.name === relay.name)
+                )];
+            }
+            
+            // 导出YAML
+            function exportYaml() {
+                try {
+                    // 更新代理组顺序
+                    updateGroupsOrder();
+                    
+                    // 收集所有组的代理
+                    const groupElements = document.querySelectorAll('.group-proxies');
+                    groupElements.forEach(groupElement => {
+                        const groupName = groupElement.getAttribute('data-group-name');
+                        const proxies = Array.from(groupElement.children).map(child => 
+                            child.getAttribute('data-proxy-name')
+                        );
+                        
+                        updateGroupProxies(groupName, proxies);
+                    });
+                    
+                    // 保持原始格式，只更新proxy-groups部分
+                    let updatedYamlText = originalYamlText;
+                    
+                    // 使用正则表达式定位proxy-groups部分
+                    const proxyGroupsRegex = /(proxy-groups:[\s\S]*?)(?=\n\w|$)/;
+                    const match = proxyGroupsRegex.exec(updatedYamlText);
+                    
+                    if (match) {
+                        // 生成新的proxy-groups部分
+                        let newProxyGroupsText = 'proxy-groups:';
+                        parsedYaml['proxy-groups'].forEach(group => {
+                            newProxyGroupsText += '\n  - name: ' + group.name;
+                            newProxyGroupsText += '\n    type: ' + group.type;
+                            newProxyGroupsText += '\n    proxies:';
+                            group.proxies.forEach(proxy => {
+                                newProxyGroupsText += '\n      - ' + proxy;
+                            });
+                        });
+                        
+                        // 替换原始文本中的proxy-groups部分
+                        updatedYamlText = updatedYamlText.replace(match[0], newProxyGroupsText);
+                    } else {
+                        // 如果没有找到匹配，使用js-yaml生成
+                        updatedYamlText = jsyaml.dump(parsedYaml, {
+                            lineWidth: -1,
+                            noRefs: true
+                        });
+                    }
+                    
+                    // 创建下载链接
+                    const blob = new Blob([updatedYamlText], { type: 'text/yaml' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'updated-config.yaml';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    showStatus('配置已导出', 'success');
+                } catch (error) {
+                    console.error('导出YAML出错:', error);
+                    showStatus('导出YAML出错: ' + error.message, 'error');
+                }
+            }
+            
+            // 处理链式转发区域的拖放
+            function handleRelayDrop(e) {
+                e.preventDefault();
+                e.currentTarget.classList.remove('drag-over');
+                
+                const proxyName = e.dataTransfer.getData('text/plain');
+                const boxId = e.currentTarget.id;
+                
+                // 清空当前框内容
+                const contentBox = boxId === 'frontProxyBox' ? frontProxyContent : backProxyContent;
+                contentBox.innerHTML = '';
+                
+                // 创建代理项
+                const proxyItem = document.createElement('div');
+                proxyItem.className = 'proxy-item';
+                proxyItem.setAttribute('data-proxy-name', proxyName);
+                
+                // 查找代理类型
+                let proxyType = 'unknown';
+                for (const p of parsedYaml.proxies) {
+                    if ((typeof p === 'object' && p.name === proxyName) || p === proxyName) {
+                        proxyType = typeof p === 'object' ? p.type : 'unknown';
+                        break;
+                    }
+                }
+                
+                const proxyItemContainer = document.createElement('div');
+                proxyItemContainer.className = 'proxy-item-container';
+                
+                const proxyNameSpan = document.createElement('span');
+                proxyNameSpan.className = 'proxy-name';
+                proxyNameSpan.textContent = proxyName;
+                
+                const proxyTypeBadge = document.createElement('span');
+                proxyTypeBadge.className = 'proxy-type-badge';
+                proxyTypeBadge.textContent = proxyType;
+                
+                proxyItemContainer.appendChild(proxyNameSpan);
+                proxyItemContainer.appendChild(proxyTypeBadge);
+                proxyItem.appendChild(proxyItemContainer);
+                
+                contentBox.appendChild(proxyItem);
+                
+                // 更新存储的代理
+                if (boxId === 'frontProxyBox') {
+                    frontProxy = proxyName;
+                } else {
+                    backProxy = proxyName;
+                }
+                
+                // 如果两个框都有代理，启用生成按钮
+                generateRelayBtn.disabled = !(frontProxy && backProxy);
+            }
+            
+            // 生成链式转发节点
+            function generateRelayNode() {
+                if (!frontProxy || !backProxy) {
+                    showStatus('请先拖入前置代理和落地节点', 'error');
+                    return;
+                }
+                
+                // 创建新的relay节点名称
+                const relayName = `${frontProxy}-${backProxy}链式转发`;
+                
+                // 检查是否已存在同名节点
+                const existingRelayIndex = parsedYaml['proxy-groups'].findIndex(group => 
+                    group.type === 'relay' && group.name === relayName
+                );
+                
+                // 创建新的relay节点配置
+                const newRelay = {
+                    name: relayName,
+                    type: 'relay',
+                    proxies: [frontProxy, backProxy]
+                };
+                
+                // 更新YAML数据
+                if (existingRelayIndex !== -1) {
+                    // 更新现有节点
+                    parsedYaml['proxy-groups'][existingRelayIndex] = newRelay;
+                    showStatus(`更新了链式转发节点: ${relayName}`, 'success');
+                } else {
+                    // 添加新节点
+                    parsedYaml['proxy-groups'].push(newRelay);
+                    showStatus(`创建了链式转发节点: ${relayName}`, 'success');
+                }
+                
+                // 重新渲染代理列表
+                const regularGroups = [];
+                const relayNodes = [];
+                
+                parsedYaml['proxy-groups'].forEach(group => {
+                    if (group.type === 'relay') {
+                        relayNodes.push(group);
+                    } else {
+                        regularGroups.push(group);
+                    }
+                });
+                
+                renderProxies(parsedYaml.proxies, relayNodes);
+                renderGroups(regularGroups);
+                
+                // 清空链式转发区域
+                frontProxyContent.innerHTML = '';
+                backProxyContent.innerHTML = '';
+                frontProxy = null;
+                backProxy = null;
+                generateRelayBtn.disabled = true;
+            }
+            
+            // 显示状态消息
+            // 处理垃圾桶的拖放
+            function handleTrashDrop(e) {
+                e.preventDefault();
+                trashContainer.classList.remove('drag-over');
+                
+                const proxyName = e.dataTransfer.getData('text/plain');
+                const sourceParent = e.dataTransfer.getData('source-parent');
+                
+                // 从源容器中删除节点
+                if (sourceParent === 'proxies-list') {
+                    // 从代理列表中删除
+                    const proxyItems = proxiesList.querySelectorAll('.proxy-item');
+                    proxyItems.forEach(item => {
+                        if (item.getAttribute('data-proxy-name') === proxyName) {
+                            item.remove();
+                        }
+                    });
+                    
+                    // 从所有代理组中删除该代理
+                    removeProxyFromAllGroups(proxyName);
+                    
+                    // 删除相关的relay链式节点
+                    removeRelatedRelayNodes(proxyName);
+                    
+                    showStatus(`已删除代理: ${proxyName}`, 'success');
+                } else {
+                    // 从代理组中删除
+                    const groupProxies = document.querySelector(`.group-proxies[data-group-name="${sourceParent}"]`);
+                    if (groupProxies) {
+                        const proxyItems = groupProxies.querySelectorAll('.proxy-item');
+                        proxyItems.forEach(item => {
+                            if (item.getAttribute('data-proxy-name') === proxyName) {
+                                item.remove();
+                            }
+                        });
+                        
+                        // 更新YAML数据
+                        updateGroupProxies(sourceParent, Array.from(groupProxies.children).map(child => 
+                            child.getAttribute('data-proxy-name')
+                        ));
+                        
+                        showStatus(`已从代理组 ${sourceParent} 中删除代理: ${proxyName}`, 'success');
+                    }
+                }
+            }
+            
+            // 从所有代理组中删除指定代理
+            function removeProxyFromAllGroups(proxyName) {
+                // 遍历所有代理组
+                const groupProxiesElements = document.querySelectorAll('.group-proxies');
+                groupProxiesElements.forEach(groupElement => {
+                    const groupName = groupElement.getAttribute('data-group-name');
+                    let changed = false;
+                    
+                    // 检查并删除代理
+                    const proxyItems = groupElement.querySelectorAll('.proxy-item');
+                    proxyItems.forEach(item => {
+                        if (item.getAttribute('data-proxy-name') === proxyName) {
+                            item.remove();
+                            changed = true;
+                        }
+                    });
+                    
+                    // 如果有变化，更新YAML数据
+                    if (changed) {
+                        updateGroupProxies(groupName, Array.from(groupElement.children).map(child => 
+                            child.getAttribute('data-proxy-name')
+                        ));
+                    }
+                });
+            }
+            
+            // 删除与指定代理相关的relay链式节点
+            function removeRelatedRelayNodes(proxyName) {
+                // 找出所有包含该代理的relay节点
+                const relayIndices = [];
+                parsedYaml['proxy-groups'].forEach((group, index) => {
+                    if (group.type === 'relay' && group.proxies && group.proxies.includes(proxyName)) {
+                        relayIndices.push(index);
+                    }
+                });
+                
+                // 从后往前删除，避免索引变化
+                for (let i = relayIndices.length - 1; i >= 0; i--) {
+                    const relayIndex = relayIndices[i];
+                    const relayName = parsedYaml['proxy-groups'][relayIndex].name;
+                    
+                    // 从YAML数据中删除
+                    parsedYaml['proxy-groups'].splice(relayIndex, 1);
+                    
+                    // 从代理列表UI中删除
+                    const proxyItems = proxiesList.querySelectorAll('.proxy-item');
+                    proxyItems.forEach(item => {
+                        if (item.getAttribute('data-proxy-name') === relayName) {
+                            item.remove();
+                        }
+                    });
+                    
+                    // 从所有代理组中删除该relay节点
+                    removeProxyFromAllGroups(relayName);
+                }
+            }
+            
+            function showStatus(message, type) {
+                statusMessage.textContent = message;
+                statusMessage.className = 'status-message ' + type;
+                statusMessage.style.display = 'block';
+                
+                setTimeout(() => {
+                    statusMessage.style.display = 'none';
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html>
